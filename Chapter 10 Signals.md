@@ -63,7 +63,7 @@ SIGINFO is SIGPWR, SIGIOT is SIGABRT, SIGPOLL,SIGLOST are SIGIO.
 SIGABRT:
 - func abort() sends this signal.The process terminates and gen core file. In Linux, assert() call abort().
 SIGALRM:
-- alarm() and setitimer()(with ITIMER_REAL flag) send the signal to the process that invoked them when an alarm expires. See [[Chapter 11]].
+- `alarm()` and `setitimer()`(with `ITIMER_REAL` flag) send the signal to the process that invoked them when an alarm expires. See [[Chapter 11]].
 SIGBUS:
 - The kernel raises the signal when process incurs a hardware fault(except, memory protection gens a SIGSEGV.
 -  On Unix Systems, it represented various errors.
@@ -84,21 +84,263 @@ SIGHUP:
 	- The practice is safe, bc daemons don't have controlling terminals and should never normally receive the signal[^1]
 SIGILL:
 - Kernel sends when a process attempt illegal machine instruction.
-SIGINT:
+`SIGINT`
 - send to all processes in the fg process group when the user interrupt character(usually \<C-C\>)
 SIGIO:
 - is sent when a BSD-style asynchronous I/O event is gened. Rare I/O on Linux. See [[Chapter 4]] for advanced I/O tech common to Linux)
 SIGKILL:
 - is sent from the kill() system call; unconditional kill. can't be caught or ignored. always terminate.
 SIGPIPE:
-- kernel raises if a process writes to a pipe but the reader has terminated.
+- The kernel raises the signal if a process writes to a pipe but the reader has terminated.
 SIGPROF:
-- setitimer() func with ITIMER_PROF flag gens the signal when profiling timer expres.
+- setitimer() func with ITIMER_PROF flag gens the signal when profiling timer express.
 SIGPWR:
-- On Linux, represents a low-battery condition. UPS monitering daemon sends the signal to *init*.
+- On Linux, represents a low-battery condition. UPS monitoring daemon sends the signal to *init*.
 SIGQUIT:
+- The kernel raises this for all processes in the fg process group when user provides the terminal quit character(<C-\\>)
+SIGSEGV:
+- name derives from *segmentation violation*
+- is sent to a process when it attempts an invalid memory access(e.g. access unmapped memory, reading from none-readable, executing code in memory)
+SIGSTOP:
+- sent only by kill(). Unconditionally stop and can't be caught or ignored.
+SIGSYS:
+- The kernel -> process when it attempts to invoke an invalid system call.
+- could happen when a binary runs older version OS.
+- properly built binaries through *glibc* should never return this, instead return -1 and set errno to ENOSYS.
+SIGTERM:
+- is sent only by `kill();
+- gracefully terminate a process. Processes may elect to catch this signal and clean up before terminating, but it is considered <u>rude to</u> catch the signal and not terminate promptly.
+SIGTRAP:
+- The kernel -> a process when it crosses a break point.
+- debuggers catch this generally. Others ignore it.
+SIGTTIN:
+- sent to a bg process when it attempts to read from its controlling terminal.
+SIGTTOU:
+- sent to a bg process when it attempts to write to its controlling terminal.
+SIGURG:
+- The kernel -> a process when OOB(out-of-band)data has arrived on socket.
+SIGUSR1, SIGUSR2
+- kernel never raises them. Processes may use them for whatever purpose they like.
+- Commonly, instruct a daemon process to behave differently. The default action is to terminate the process.
+SIGVTALRM:
+- The `setitimer()` func sends the signal when timer with `ITIMER_VIRTUAL`flag expires. See [[Chapter 11]].
+SIGWINCH:
+- The kernel raises this for all processes in the fg process group when terminal window size changes.
+- By default, processes ignore this.
+- *top* program catches this.
+SIGXCPU:
+- The kernel raises this when process exceeds soft processor limit.
+- The kernel continues raise this per sec until exits or exceeds its hard processor limit.
+SIGXFSZ:
+- The kernel raises this when a process exceeds its file size limit. The default action is to terminate the process.
+- However if caught or ignored, the sys call returns -1 and set errno to EFBIG.
+# Basic Signal Management
+- The simplest and oldest interface for signal management is the `signal()` func.
+- Defined by the ISO C89 standard.
+```c
+#include <signal.h>
+
+typedef void (*sighandler_t)(int);
+
+sighandler_t signal(int signo, sighandler_t handler);
+```
+- If successfully called, `signal()` handles the signal with 2nd arg `handler` instead of the current action.
+- a process can catch neither `SIGKILL`nor `SIGSTOP`, so in those case 2nd arg is meaningless.
+- `handler`func must return `void`, bc there is no std place to return in the program.
+	- Linux uses a typedef, `sighandler_t` to define.
+	- Other Unix systems directly use the func pointers.
+	- some have own types, which not be named `sighandler_t.`
+	- Programs seeking portability shouldn't ref the type.
+- when raises a signal to process -> kernel suspends exec of prog instruction stream -> calls signal handler -> handler with `signo` from `signal()`
+- Also, use `signal()` to instruct kernel to ignore a signal or reset the signal to the default behavior by using handler parameter:
+	- `SIG_DEL`
+		- set the behavior to its default.
+	- `SIG_IGN`
+		- Ignore the signal given by `signo`.
+- The `signal()` func returns the previous behavior of the signal, which could be a pointer to a signal handler, `SIG_DEL`, `SIG_IGN`.
+	- On error, the func returns `SIG_ERR`, doesn't set `errno`.
+## Waiting for a Signal, Any Signal
+- the POSIX-defined `pause()` sys call puts a process to sleep until it receives a signal the either handled or terminates the process.
+``` c
+#include <unistd.h>
+int pause (void);
+```
+- `puase()` returns only when a signal is received, in which case the signal is handled, and `pause()` returns -1 and sets `errno` to `EINTR`.[^2] If the kernel raises an ignored signal, the process doesn't wake up.
+	- In the Linux kernel, `puase()` is one of the simplest sys calls. It performs only 2 actions.(`getpid(),gettid()` each only 1 line.)
+	- It puts the process in the interruptible sleep state.
+	- calls `schedule()` to invoke the Linux process scheduler to find another process to run.
+## Example
+```c
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <signal.h>
+/* handler for SIGINT and SIGTERM */
+static void signal_handler (int signo)
+{
+ if (signo == SIGINT)
+ printf ("Caught SIGINT!\n");
+ else if (signo == SIGTERM)
+ printf ("Caught SIGTERM!\n");
+ else {
+ /* this should never happen */
+ fprintf (stderr, "Unexpected signal!\n");
+ exit (EXIT_FAILURE);
+ }
+ exit (EXIT_SUCCESS);
+}
+int main (void)
+{
+ /*
+ * Register signal_handler as our signal handler
+ * for SIGINT.
+ */
+ if (signal (SIGINT, signal_handler) == SIG_ERR) {
+ fprintf (stderr, "Cannot handle SIGINT!\n");
+ exit (EXIT_FAILURE);
+ }
+ /*
+ * Register signal_handler as our signal handler
+ * for SIGTERM.
+ */
+ if (signal (SIGTERM, signal_handler) == SIG_ERR) {
+ fprintf (stderr, "Cannot handle SIGTERM!\n");
+ exit (EXIT_FAILURE);
+ }
+ /* Reset SIGPROF's behavior to the default. */
+ if (signal (SIGPROF, SIG_DFL) == SIG_ERR) {
+ fprintf (stderr, "Cannot reset SIGPROF!\n");
+ exit (EXIT_FAILURE);
+ }
+ /* Ignore SIGHUP. */
+ if (signal (SIGHUP, SIG_IGN) == SIG_ERR) {
+ fprintf (stderr, "Cannot ignore SIGHUP!\n");
+ exit (EXIT_FAILURE);
+ }
+ for (;;)
+ pause ();
+ return 0;
+}```
+## Execution and Inheritance
+- On fork, the child inherits the signal actions(ignore, default, handle) of parent.
+- Pending signals are *not* inherited, make sense, bc was sent to a specific pid, decidedly not the child.
+- *exec* family of sys calls create process, all signals are default actions.
+	- unless the parent process is ignoring them.
+	- another way, all signal before *exec* will be default action after *exec*
+		- make sense bc a freshly executed process doesn't share the addr space of its parent, thus signal handlers may not exist.
+	- Pending signals are inherited.
+
+| Signal Behavior | Across Forks  | Across Execs  |
+|-----------------|---------------|---------------|
+| Ignored         | Inherited     | Inherited     |
+| Default         | Inherited     | Inherited     |
+| Handled         | Inherited     | Not Inherited |
+| Pending signals | Not Inherited | Inherited     |
+- notable use:
+	- when shell(or another bg procs) executes bg procs, the new one should ignore the interrupt and quit chars.
+	- Thus, a shell before executes a bg proc, it should set `SIGINT` and `SIGQUIT` to `SIG_IGN`.
+	- It's common to first check these signals not ignored.
+```c
+/* handle SIGINT, but only if it isn't ignored */
+if (signal (SIGINT, SIG_IGN) != SIG_IGN) {
+    if (signal (SIGINT, sigint_handler) == SIG_ERR)
+        fprintf (stderr, "Failed to handle SIGINT!\n");
+}
+```
+- set a signal behavior to check the signal behavior is a deficiency in the `signal()` interface.
+## Mapping Signal Numbers to Strings
+1. `extern const char * const sys_siglist[];`
+2. BSD-defined `psinal()`interface, which is common enough that Linux supports it, too.
+	```c
+	#include <signal.h>
+	void psignal (int signo, const char *msg);
+	```
+	- prints to `stderr` `msg`string: name of signal given by `signo`.
+3. `strsignal()` is better interface. 
+	```c
+	#define _GNU_SOURCE
+	#include <string.h>
+	char * strsignal (int signo);
+	```
+	- return description of the signal.
+	- returned str is valid only until the next invocation of `strsignal()`, so it isn't thread-safe.
+4. `sys_siglist` is the best.
+```c
+static void signal_handler (int signo)
+{
+	printf ("Caught %s\n", sys_siglist[signo]);
+}
+```
+# Sending a Signal
+- The `kill()` sys call, sends a signal from one proc to another.
+ ```c
+	#include <sys/types.h>
+	#include <signal.h>
+	int kill (pid_t pid, int signo);
+ ```
+- if`pid` >0, `signo` is sent to `pid`.
+- if`pid` == 0, `signo` is sent to every proc in the invoking process's process group.
+- if`pid` == -1, `signo` is sent to every proc which invoking one has perm to send a signal, except itself and *init*.
+- if`pid` < -1, `signo` is sent to process group -pid.
+RETURN VALUE
+- so long as a single signal was sent, returns 0.
+- Else, returns -1, and `errno` is
+	- `EINVAL`: `signo` is invalid.
+	- `EPERM`: lacks sufficient perm to send.
+	- `ESRCH`: proc or proc group denoted by `pid` is zombie.
+## Permissions
+- A proc with `CAP_KILL` capability can send a signal.
+- or proc's effective or real user ID == real or saved user ID of recieving proc.
+	- user can send signal to he owns.
+>Unix sys, including Linux, has exception for `SIGCONT`. It can send the signal to any proc in the same session.
+
+If `sigo` == 0, the call won't send a signal, but do check error. This is useful to check permissions.
+## Examples
+```c
+int ret;
+ret = kill(1722, SIGHUP);
+if (ret)
+	perror ("kill");
+```
+which is same as `$ kill -HUP 1722`
+check permi.
+```c
+int ret;
+ret = kill (1722, 0);
+if (ret)
+	; /* we lack permission */
+else
+	; /* we have permission */
+```
+## Sending a Signal to Yourself
+```c
+#include <signal.h>
+int raise (int signo);
+
+// this doesn't set `ERRNO`
+raise (signo); // is equal to
+kill (getpid(), signo);
+```
+## Sending a Signal to an Entire Process Group
+```c
+#include <signal.h>
+int killpg (int pgrp, int signo);
+
+killpg (pgrp, signo); // is equal to
+kill (-pgrp, signo);
+```
+- even if `pgrp` = 0, this holds true.`signo` is sent to every proc in the invoking proc's group.
+- RETURN VALUE is 0 and -1, and `errno` is
+	- `EINVAL`: `signo`invalid.
+	- `EPERM`: lack permi.
+	- `ESRCH`: `pgrp`doesn't exist.
+# Reentrancy
 - 
 
 
 
-[^1]: no idea.
+
+
+
+[^1]: no idea
+[^2]: no idea
