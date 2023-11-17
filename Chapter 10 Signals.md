@@ -335,11 +335,13 @@ kill (-pgrp, signo);
 	- `EPERM`: lack permi.
 	- `ESRCH`: `pgrp`doesn't exist.
 # Reentrancy
-- 
-
-
-
-
+- the moments the kernel raises a signal can be anytime.
+	- Middle of key ope which will be unsafe.
+	- Handling another signal.
+- Signal handlers must take care, when modifying global(shared) data.
+- next section will temporarily block the signals.
+- if the signal handler invokes same non-reentrant func in the middle of non-reentrant func, it'll be chaos.
+- *reentrant func* is a func 
 
 
 [^1]: no idea
