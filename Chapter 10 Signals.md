@@ -341,8 +341,153 @@ kill (-pgrp, signo);
 - Signal handlers must take care, when modifying global(shared) data.
 - next section will temporarily block the signals.
 - if the signal handler invokes same non-reentrant func in the middle of non-reentrant func, it'll be chaos.
-- *reentrant func* is a func 
+- *reentrant func* is a func safe to call within itself
+	- or concurrently from another thread in the same procs.
+- in order to qualify as reentrant,
+	 - use only stack-allocated, data by the caller, must not invoke any non-reentrant func.
+## Guanranteed-Reentrant Functions
+- have to assume the process could be executing non-reentrant func, thus signal handlers must make use only reentrant.
+- *signal-safe*(reentrant and thus safe to use from within a signal handler) list
+- ```
+```c
+abort() accept() access() aio_error() aio_return() aio_suspend() alarm() bind() cfgetispeed() cfgetospeed() cfsetispeed() cfsetospeed() chdir() chmod() chown() clock_gettime() close() connect() creat() dup() dup2() execle() execve() \_Exit() \_exit() fchmod() fchown() fcntl() fdatasync() fork() fpathconf() fstat() fsync() ftruncate() getegid() geteuid() getgid() getgroups() getpeername() getpgrp() getpid() getppid() getsockname() getsockopt() getuid() kill() link() listen() lseek() lstat() mkdir() mkfifo() open() pathconf() pause() pipe() poll() posix_trace_event() pselect() raise() read() readlink() recv() recvfrom() recvmsg() rename() rmdir() select() sem_post() send() sendmsg() sendto() setgid() setpgid() setsid() setsockopt() setuid() shutdown() sigaction() sigaddset() sigdelset() sigemptyset() sigfillset() sigismember() signal() sigpause() sigpending() sigprocmask() sigqueue() sigset() sigsuspend() sleep() socket() socketpair() stat() symlink() sysconf() tcdrain() tcflow() tcflush() tcgetattr() tcgetpgrp() tcsendbreak() tcsetattr() tcsetpgrp() time() timer_getoverrun() timer_gettime() timer_settime() times() umask() uname() unlink() utime() wait() waitpid() write()
+``````
+# Signal Sets
+- standardized by POSIX and found on any modern Unix system.
+
+```c
+#include <signal.h>
+
+// make it empty
+int sigemptyset (sigset_t *set);
+
+// make it full
+int sigfillset (sigset_t *set);
+int sigaddset (sigset_t *set, int signo); // add signo to the signal set
+// both set errno to EINVAL.
+
+// remove signo from signal set(errno→EINVAL)
+int sigdelset (sigset_t *set, int signo);
+
+// whether signo is in signal set
+int sigismember (const sigset_t *set, int signo);
+```
+
+## More Signal Set Functions
+- none-standard func
+```c
+#define _GNU_SOURCE
+#define <signal.h>
+int sigisemptyset (sigset_t *set);
+int sigorset (sigset_t *dest, sigset_t *left, sigset_t *right);
+int sigandset (sigset_t *dest, sigset_t *left, sigset_t *right);
+```
+# Blocking Signals
+- when prog needs to share data b/w a signal handlers and elsewhere in the prog.
+- *critical regions* are where *block* signals for no interruption wanted. 
+- any signal are not raised until unblocked.
+- *signal mask* is the set of signal blocked by a process.
+- POSIX defines, and Linux implements
+```c
+#include <signal.h>
+int sigprocmask (int how,
+					const sigset_t *set,
+					sigset_t *oldset);
+```
+- `how`
+	- `SIG_SETMASK`: set `set`
+	- `SIG_BLOCK`: add `set`
+	- `SIG_UNBLOCK`: subtract `set` (illegal to subtract void)
+success is 0, failure is -1, set `errno` to `EINVAL`when `how` was invalid, `EFALUT` when `set` or `oldset` was invalid.
+- blocking `SIGKILL`,`SIGSTOP` is not allowed.
+	- `sigprocmask()` silently ignores any add signal.
+## Retrieving Pending Signals 
+- *pending* signals are signals not delivered, when the kernel raises a block.
+```c
+#include <signal.h>
+int sigprocmaski (int how, const sigset_t *set, sigset_t *oldset);//POSIX defined. EFALUT for invalid set
+```
+## Waiting for a Set of Signals
+- proc to temporarily wait until a signal is raised to terminates or is handled by the proc. It's a third POSIX-defined func.
+```c
+#include <signal.h>
+int sigsuspend (const sigset_t *set);
+```
+- signal terminates the proc -> `sigsuspend()` doesn't return
+- raise and handled-> ret -1,`EINTR = errno`
+- if invalid `EFALUT = errno`
+- common scenario is `sigprocmask()` to block, save the old mask in `oldset`, after exiting the *critical region*, the proc then calls `sigsuspend()` 
+# Advanced Signal Management
+- above is basic, bc it's part of the standard C library.
+- POSIX standardizes the `sigaction()` system call, providing much greater signal management capabilities.
+```c
+#include <signal.h>
+int sigaction (int signo,
+			   const struct sigaction *act,
+			   struct sigaction *oldact);
+```
+- change the behavior of the signal id-ed by `signo`
+	- except `SIGKILL` and `SIGSTOP`
+ - if `act` isn't `NULL`, sys call changes the current behavior of the signal as specified by `act`
+- if `oldact`≠ `NULL`, the call stores prev behavior of the given signal there.
+	- (or current if `act` is `NULL`)
+```c
+#include <sys/signal.h>
+struct sigaction {
+	void (*sa_handler)(int); /* signal handler or action */
+	void (*sa_sigaction)(int, siginfo_t *, void *);
+	sigset_t sa_mask; /* signals to block */
+	int sa_flags; /* flags */
+	void (*sa_restorer)(void); /* obsolete and non-POSIX */
+};
+```
+- `sa_handler` field may be `SIG_DEL`,`SIG_IGN`, or a pointer to a signal-handling func.
+	- the func has the same prototype installed by `signal()`
+	- `void my_handler (int signo);`
+- if `sa_flags` = `SA+SIGINFO`, `sa_sigaction`(not `sa_handler`) the following signal-handling func.
+	- `void my_handler (int signo, siginfo_t *si, void *ucontext);`
+ third arg is `ucontext_t`structure casting to a `void` pointer.
+- on some archi, `sa_handler` and `sa_sigaction` are in a union, and shouldn't be assigned values in the same time.
+- when `SA_NODEFER` in `sa_flags`, the current handled signal is also blocked.
+	- as always, you can't block `SIGKILL` or `SIGSTOP`.
+- other than `SA_SIGINFO`, `SA_NODEFER` flags,
+	- `SA_NOCLDSTOP` don't notify when child proc stops or resume when `signo = SIGCHLD`
+	 - `SA_NOCLDWAIT` enables *automatic child reaping*: children aren't be zombies when terminate. And parents needn't(and can't) call `wait()` on them. See [Chapter 5]
+	 - `SA_NOMASK`obsolete. Use `SA_NODEFER`, but see the value turn up in older code(?)[^3]
+	 - `SA_ONESHOT`:obsolete. Use `SA_RESETHAND`, but see the value turn up in older code(?)
+	  - `SA_ONSTACK` use *alternative signal stack* provided by `sigaltstack()`
+		  - useful in Pthreads app with smaller thread stacks might be overrun by some signal handler usage.
+	  - `SA_RESTART`
+		  - enable BSD-style restart of sys calls.
+	  - `SA_RESETHAND`
+		   - enable "one-shot" mode. the behavior of signal is reset to the default after returns.
+	   - `sa-restorer` field is no longer used in Linux.
+	- `sigaction()` failure is -1.
+		- `errno`is
+			- `EFAULT` `act`, `oldact` is invalid.
+			- `EINVAL`  `signo` is invalid, `SIGKILL`, `SIGSTOP`
+## The siginfo_t Structure
+- also defined in <sys/signal.h>
+```c
+typedef struct siginfo_t {
+	int si_signo; /* signal number */
+	int si_errno; /* errno value */
+	int si_code; /* signal code */
+	pid_t si_pid; /* sending process's PID */
+	uid_t si_uid; /* sending process's real UID */
+	int si_status; /* exit value or signal */
+	clock_t si_utime; /* user time consumed */
+	clock_t si_stime; /* system time consumed */
+	sigval_t si_value; /* signal payload value */
+	int si_int; /* POSIX.1b signal */
+	void *si_ptr; /* POSIX.1b signal */
+	void *si_addr; /* memory location that caused fault */
+	int si_band; /* band event */ int si_fd; /* file descriptor */
+};
+```
+- 
 
 
 [^1]: no idea
 [^2]: no idea
+[^3]: no idea

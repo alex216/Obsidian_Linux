@@ -3,5 +3,5 @@
   "baseFontSize": 17,
   "showViewHeader": true,
   "nativeMenus": true,
-  "translucency": false
+  "translucency": true
 }
