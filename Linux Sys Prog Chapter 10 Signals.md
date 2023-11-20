@@ -1,4 +1,4 @@
-![[Pasted image 20231112175924.png]]![[Pasted image 20231112175951.png]]
+![[Linux Sys Prog 10 signals.png]]
 Signals are software interrupts.
 Primitive form of interprocess communication(IPC).
 
@@ -9,13 +9,13 @@ This chapter will discuss use and <u>misuse</u>, manage and manipulate signals.
 # Signal Concepts
 a signal is raised(sent),stored by kernel, which perform one of three actions, depending on process asked kernel to do. 
 *Ignore the signal*
-+ exception: SIGKILL and SIGSTOP
++ exception: `SIGKILL` and `SIGSTOP`
 *Catch and handle the signal*
 + example:SIGINT..user generating interrupt char.
 + SIGTERM..processes catch SIGTERM to perform necessary cleanup, such like disconnect from network, removing temporary files.
-+ SIGKILL, SIGSTOP can't be caught.
++ `SIGKILL`, `SIGSTOP` can't be caught.
 *Perform the default action*
-+ default action is oftern terminate the proccess.(SIGKILL is)
++ default action is often terminate the proc.(`SIGKILL` is)
 Nowadays, signals can pass user-defined data.
 ## Signal Identifiers
 - defined in <signal.h>, they are positive integers(integer identifier)
@@ -63,7 +63,7 @@ SIGINFO is SIGPWR, SIGIOT is SIGABRT, SIGPOLL,SIGLOST are SIGIO.
 SIGABRT:
 - func abort() sends this signal.The process terminates and gen core file. In Linux, assert() call abort().
 SIGALRM:
-- `alarm()` and `setitimer()`(with `ITIMER_REAL` flag) send the signal to the process that invoked them when an alarm expires. See [[Chapter 11]].
+- `alarm()` and `setitimer()`(with `ITIMER_REAL` flag) send the signal to the process that invoked them when an alarm expires. See [[Linux Sys Prog Chapter 11]].
 SIGBUS:
 - The kernel raises the signal when process incurs a hardware fault(except, memory protection gens a SIGSEGV.
 -  On Unix Systems, it represented various errors.
@@ -123,7 +123,7 @@ SIGUSR1, SIGUSR2
 - kernel never raises them. Processes may use them for whatever purpose they like.
 - Commonly, instruct a daemon process to behave differently. The default action is to terminate the process.
 SIGVTALRM:
-- The `setitimer()` func sends the signal when timer with `ITIMER_VIRTUAL`flag expires. See [[Chapter 11]].
+- The `setitimer()` func sends the signal when timer with `ITIMER_VIRTUAL`flag expires. See [[Linux Sys Prog Chapter 11]].
 SIGWINCH:
 - The kernel raises this for all processes in the fg process group when terminal window size changes.
 - By default, processes ignore this.
@@ -272,6 +272,7 @@ static void signal_handler (int signo)
 }
 ```
 # Sending a Signal
+```
 - The `kill()` sys call, sends a signal from one proc to another.
  ```c
 	#include <sys/types.h>
@@ -348,10 +349,21 @@ kill (-pgrp, signo);
 ## Guanranteed-Reentrant Functions
 - have to assume the process could be executing non-reentrant func, thus signal handlers must make use only reentrant.
 - *signal-safe*(reentrant and thus safe to use from within a signal handler) list
-- ```
-```c
-abort() accept() access() aio_error() aio_return() aio_suspend() alarm() bind() cfgetispeed() cfgetospeed() cfsetispeed() cfsetospeed() chdir() chmod() chown() clock_gettime() close() connect() creat() dup() dup2() execle() execve() \_Exit() \_exit() fchmod() fchown() fcntl() fdatasync() fork() fpathconf() fstat() fsync() ftruncate() getegid() geteuid() getgid() getgroups() getpeername() getpgrp() getpid() getppid() getsockname() getsockopt() getuid() kill() link() listen() lseek() lstat() mkdir() mkfifo() open() pathconf() pause() pipe() poll() posix_trace_event() pselect() raise() read() readlink() recv() recvfrom() recvmsg() rename() rmdir() select() sem_post() send() sendmsg() sendto() setgid() setpgid() setsid() setsockopt() setuid() shutdown() sigaction() sigaddset() sigdelset() sigemptyset() sigfillset() sigismember() signal() sigpause() sigpending() sigprocmask() sigqueue() sigset() sigsuspend() sleep() socket() socketpair() stat() symlink() sysconf() tcdrain() tcflow() tcflush() tcgetattr() tcgetpgrp() tcsendbreak() tcsetattr() tcsetpgrp() time() timer_getoverrun() timer_gettime() timer_settime() times() umask() uname() unlink() utime() wait() waitpid() write()
-``````
+### Table 10-3
+| Function            | Function            | Function          | Function          | Function          | Function          | Function          | Function          | Function          | Function          |
+|---------------------|---------------------|-------------------|-------------------|-------------------|-------------------|-------------------|-------------------|-------------------|-------------------|
+| abort()             | accept()            | access()          | aio_error()       | aio_return()      | aio_suspend()     | alarm()           | bind()            | cfgetispeed()     | cfgetospeed()     |
+| cfsetispeed()       | cfsetospeed()       | chdir()           | chmod()           | chown()           | clock_gettime()   | close()           | connect()         | creat()           | dup()             |
+| dup2()              | execle()            | execve()          | \_Exit()          | \_exit()           | fchmod()          | fchown()          | fcntl()           | fdatasync()       | fork()            |
+| fpathconf()         | fstat()             | fsync()           | ftruncate()       | getegid()         | geteuid()         | getgid()          | getgroups()       | getpeername()     | getpgrp()         |
+| getpid()            | getppid()           | getsockname()     | getsockopt()      | getuid()          | kill()            | link()            | listen()          | lseek()           | lstat()           |
+| mkdir()             | mkfifo()            | open()            | pathconf()        | pause()           | pipe()            | poll()            | posix_trace_event()| pselect()         | raise()           |
+| read()              | readlink()          | recv()            | recvfrom()        | recvmsg()         | rename()          | rmdir()           | select()          | sem_post()        | send()            |
+| sendmsg()           | sendto()            | setgid()          | setpgid()         | setsid()          | setsockopt()      | setuid()          | shutdown()        | sigaction()       | sigaddset()       |
+| sigdelset()         | sigemptyset()       | sigfillset()      | sigismember()     | signal()          | sigpause()        | sigpending()      | sigprocmask()     | sigqueue()        | sigset()          |
+| sigsuspend()        | sleep()             | socket()          | socketpair()      | stat()            | symlink()         | sysconf()         | tcdrain()         | tcflow()          | tcflush()         |
+| tcgetattr()         | tcgetpgrp()         | tcsendbreak()     | tcsetattr()       | tcsetpgrp()       | time()            | timer_getoverrun()| timer_gettime()   | timer_settime()   | times()           |
+| umask()             | uname()             | unlink()          | utime()           | wait()            | waitpid()         | write()           |                   |                   |                   |
 # Signal Sets
 - standardized by POSIX and found on any modern Unix system.
 
@@ -391,8 +403,8 @@ int sigandset (sigset_t *dest, sigset_t *left, sigset_t *right);
 ```c
 #include <signal.h>
 int sigprocmask (int how,
-					const sigset_t *set,
-					sigset_t *oldset);
+	const sigset_t *set,
+	sigset_t *oldset);
 ```
 - `how`
 	- `SIG_SETMASK`: set `set`
@@ -423,8 +435,8 @@ int sigsuspend (const sigset_t *set);
 ```c
 #include <signal.h>
 int sigaction (int signo,
-			   const struct sigaction *act,
-			   struct sigaction *oldact);
+	const struct sigaction *act,
+	struct sigaction *oldact);
 ```
 - change the behavior of the signal id-ed by `signo`
 	- except `SIGKILL` and `SIGSTOP`
@@ -482,12 +494,142 @@ typedef struct siginfo_t {
 	int si_int; /* POSIX.1b signal */
 	void *si_ptr; /* POSIX.1b signal */
 	void *si_addr; /* memory location that caused fault */
-	int si_band; /* band event */ int si_fd; /* file descriptor */
+	int si_band; /* band event */
+	int si_fd; /* file descriptor */
 };
 ```
-- 
+- many think the Unix signal model for IPC is awful bc they use `signal()` instead of `sigaction()`with`SA_SIGINFO`.
+- `si_signo` 
+	- sig num is in question.
+- `si_errno`
+	- error code if nonzero.
+- `si_code`
+	- why and where the process received the signal.
+- `si_pid`
+	- for `SIGCHLD` the pid of the process terminated.
+- `si_uid`
+	- for `SIGCHLD` the owning uid of the proc terminated.
+- `si_status`
+	- for `SIGCHLD` the exit status of the proc terminated.
+- `si_utime`
+	- for `SIGCHLD` the user time consumed by the proc terminated.
+ - `si_stime`
+	 - for `SIGCHLD` the sys time consumed ...
+ - `si_value`
+	 - a union of `si_int` and `si_ptr`
+ - `si_int`
+	 - for signal sent via `sigqueue()`.int typed payload.
+ - `si_ptr`
+	 - for `sigqueue()`. void pointer type payload.
+ - `si_band`
+	 - for `SIGPOLL`. out-of-band and priority info for the fd listed in `si_fd`
+ - `si_fd`
+	 - for `SIGPOLL` the fd whose ope completed.
+- `si_value,si_int,si_ptr`can sent any msg.
+	- if the procs don't share an addr space, pointers are helpless
+- POSIX guarantees the only first 3 fields.
+	- e.g. you should access the `si_fd` only if the signal is `SIGPOLL`
+## The Wonderful World of si_code
+- it indicates the cause of the signal.
+	- for user-sent : how the signal was sent
+	- for kernel-sent : why the signal was sent
+ - list
+	- `SI_ASYNCIO` completion of asynchronous I/O. See [Chapter 5]
+	- `SI_KERNEL` raised by the kernel
+	- `SI_MESGQ` bc of a state change of a POSIX msg queue.
+	- `SI_QUEUE` sent by `sigqueue()`
+	- `SI_TIMER` bc of a expiration of a POSIX timer. See [Chapter 11]
+	- `SI_TKILL` sent by `tkill(),tgkill()` sys calls used by threading libs.
+	- `SI_SIGIO` queuing of `SIGIO`
+	- `SI_USER` sent by `kill(),raise()`
+- following are valid for `SIGBUS` only. Indicating hard err.
+	- `BUS_ADRALN` alignment err. See [Chapter 9]
+	- `BUS_ADRERR` accessed invalid physical addr.
+	- `BUS_OBJERR` other hard err.
+- for `SIGCHLD`, following identify what the child did to generate the signal sent to its parent
+	- `CLD_CONTINUED` the child was stopped but has resumed.
+	- `CLD_DUMPED` the child terminated abnormally.
+	- `CLD_EXITED` the child terminated normally via `exit()`
+	- `CLD_KILLED`
+	- `CLD_STOPPED`
+	- `CLD_TRAPPED` the child hit a trap.
+- following are valid for `SIGFPE`only. explaining the type of arithmetic err.
+	- `FPE_FLTDIV` floating-point ope, resulted in division by zero.
+	- `FPE_FLTOVR` floating-point ope, resulted in an overflow.
+	- `FPE_FLTINV` invalid floating-point ope
+	- `FPE_FLTRES`floating-point ope, resulted in an inexact, invalid result.
+	- `FPE_FLTSUB`floating-point ope, resulted in an out-of-range subscript.
+	- `FPE_FLTUND`floating-point ope, resulted in an underflow.
+	- `FPE_FLTDIV`int ope, resulted in div by zero.
+	- `FPE_INTOVF` int ope, resulted in an overflow.
+- following are valid for `SIGILL`only, explaining the illegal instruction execution
+	- `ILL_ILLADR` the proc attempted to enter an illegal addressing mode
+	- `ILL_ILLOPC`the proc attempted to exec an illegal opcode.
+	- `ILL_ILLOPN` the proc attempted to exec an illegal operand.
+	- `ILL_PRVOPC` the proc attempted to exec a privileged opcode.
+	- `ILL_PRVREG` the proc attempted to exec on a privileged regi.
+	- `ILL_ILLTRP` the proc attempted to enter an illegal trap.
+	- for all of these vals, `si_addr` points to the addr of the offense.
+- for `SIGPOLL`, the following vals identify the I/O event that generated the signal:
+	- `POLL_ERR` I/O err occurred.
+	- `POLL_HUP` the device hung up or the socket disconnected.
+	- `POLL_MSG` a msg is available.
+	- `POLL_OUT` the file is writable.
+	- `POLL_PRI`the file has high-priority data which can read.
+- following are valid for `SIGSEGV`
+	- `SEGV_ACCERR` the proc accessed a valid region of mem in an invalid way, which is violation of memory-access permissions.
+	- `SEGV_MAPERR` the proc accessed an invalid region of memory.
+	- for both, `si_addr` contains the offending addr.
+- for `SIGTRAP`, there are two type:
+	- `TRAP_BRKPT`: break point
+	- `TRAP_TRACE`: trace trap
+# Sending a Signal with a Payload
+- the `sigqueue()` func, defined by POSIX, allows a proc to send a signal with payload.
+```c
+#include <signal.h>
+int sigqueue (pid_t pid,
+	int signo,
+	const union sigval value);
+```
+- similar to `kill()`
+- `signo` is queued to the proc or proc group defined by `pid`. The signal's payload is `value`which is a union of an integer and a void pointer.
+```c
+union sigval {
+	int sival_int;
+	void *sival_ptr;
+};
+```
+failure is -1. sets `errno` to
+- `EAGAIN` the invoking proc has reached the limit on enqueued signals.
+- `EINVAL` the `signo` is invalid.
+- `EPERM` the proc lacks permi. The permi is same with `kill()`. See [[Linux Sys Prog Chapter 10 Signals#Sending a Signal]].
+- `EPRCH` the proc or proc group identified by `pid` doesn't exist or zombie.
+- with `kill()` may pass null signal(0) for `signo` to test permi.
+## Signal Payload Example
+```c
+sigval value;
+int ret;
 
+value.sival_int = 404;
 
+ret = sigqueue (1722, SIGUSR2, value);
+if (ret)
+	perror ("sigqueue");
+```
+- if proc1772 handles `SIGUER2` with an `SA_SIGINFO`handler. It will find `signo = SIGUSR2, si->si_int = 404, si->si_code = SI_QUEUE`
+# A Flaw in Unix?
+- Signals have abad reputation among Unix programmers.
+- old, antiquated mechanism for kernel-to-user communication, and at best a primitive form of IPC, in a world of multithreading and event loops.
+- a proper start would be more expressive, easily extensible, thread-safe, and fd based solution.
+- However, they are the only way to receive many notifications from the kernel.
+- And, they are how the Unix(and thus Linux) terminates procs, and manages the parent/child relationship.
+- Downside is it's hard to write a proper signal handler that is safe from reentrancy.
+	- they should be safe if you only use [[Linux Sys Prog Chapter 10 Signals#Table 10-3]]
+- Another chink in signals' armor is that many programmers still use `signal()` and `kill()`, rather that`sigaction()` and `sigqueue()`.
+	- `SA_SIGINFO`-style is significantly more powerful and expressive.
+
+reference
+ [[資料]]
 [^1]: no idea
 [^2]: no idea
 [^3]: no idea
