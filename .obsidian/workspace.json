@@ -13,23 +13,22 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Linux Sys Prog Chapter 10 Signals.md",
+                "file": "Linux Sys Prog Chapter 1.md",
                 "mode": "source",
                 "source": false
               }
             }
           },
           {
-            "id": "f74381e128d12cd6",
+            "id": "3e3b34459a376ad4",
             "type": "leaf",
             "state": {
-              "type": "image",
-              "state": {
-                "file": "picture/Linux Sys Prog 1 index.png"
-              }
+              "type": "graph",
+              "state": {}
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -79,7 +78,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "right": {
     "id": "279d38a75952c77e",
@@ -95,7 +95,6 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Linux Sys Prog Chapter 10 Signals.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -112,7 +111,6 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Linux Sys Prog Chapter 10 Signals.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -134,9 +132,7 @@
             "type": "leaf",
             "state": {
               "type": "outline",
-              "state": {
-                "file": "Linux Sys Prog Chapter 10 Signals.md"
-              }
+              "state": {}
             }
           },
           {
@@ -151,7 +147,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -164,11 +161,11 @@
       "table-editor-obsidian:Advanced Tables Toolbar": false
     }
   },
-  "active": "b0f9611e677dc081",
+  "active": "3e3b34459a376ad4",
   "lastOpenFiles": [
+    "Linux Sys Prog Chapter 10 Signals.md",
     "Linux Sys Prog Chapter 1.md",
     "picture/Linux Sys Prog 1 index.png",
-    "Linux Sys Prog Chapter 10 Signals.md",
     "picture/fwef.png",
     "picture/Linux Sys Prog 10 signals.png",
     "picture/Linux Sys Prog 1.md",
