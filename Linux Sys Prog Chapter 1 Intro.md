@@ -345,3 +345,98 @@ Linux has the same permi & security mechanism with Unix.
 		- at the cost of
 			- increased complexity
 			- on-disk usage
+## Signals
+- one-way asynchronous notifications.
+- the kernel → a proc, a proc → a proc, or a proc to itself.
+- signals typically alert a proc to some event, such as segfault or \<C-c\>
+- the Linux kernel has about 30 signals.
+- Dut to signals' asynchrony
+	- signal handlers must not stomp.
+		- by executing only *async-safe(signal-safe)* func
+## Interprocess Communication
+- The Linux kernel implements most of historic Unix IPC
+	- including defined by both System V and POSIX
+- IPC mechanisms
+	- pipes, named pipes, semaphores, message queues, shared memory, and futexes.
+## Headers
+- both the kernel itself and *glibc* provide them.
+	- the standard C fare `<string.h>`
+	- the usual Unix offerings `<unistd.h>`
+## Error Handling
+- return value(usually -1) and modifiable lvalue, `errno`
+- *glibc* provides `errno` support both for library and syscalls.
+
+| Error Code | Description                                     |
+|------------|-------------------------------------------------|
+| E2BIG      | Argument list too long                          |
+| EACCES     | Permission denied                               |
+| EAGAIN     | Try again                                       |
+| EBADF      | Bad file number                                 |
+| EBUSY      | Device or resource busy                         |
+| ECHILD     | No child processes                              |
+| EDOM       | Math argument outside of the domain of function |
+| EEXIST     | File already exists                             |
+| EFAULT     | Bad address                                     |
+| EFBIG      | File too large                                  |
+| EINTR      | System call was interrupted                     |
+| EINVAL     | Invalid argument                                |
+| EIO        | I/O error                                       |
+| EISDIR     | Is a directory                                  |
+| EMFILE     | Too many open files                             |
+| EMLINK     | Too many links                                  |
+| ENFILE     | File table overflow                             |
+| ENODEV     | No such device                                  |
+| ENOENT     | No such file or directory                       |
+| ENOEXEC    | Exec format error                               |
+| ENOMEM     | Out of memory                                   |
+| ENOSPC     | No space left on device                         |
+| ENOTDIR    | Not a directory                                 |
+| ENOTTY     | Inappropriate I/O control operation             |
+| ENXIO      | No such device or address                       |
+| EPERM      | Operation not permitted                         |
+| EPIPE      | Broken pipe                                     |
+| ERANGE     | Result too large                                |
+| EROFS      | Read-only filesystem                            |
+| ESPIPE     | Invalid seek                                    |
+| ESRCH      | No such process                                 |
+| ETXTBSY    | Text file busy                                  |
+| EXDEV      | Improper link                                   |
+
+```c
+#include <stdio.h>
+void perror (const char *str);
+
+if (close (fd) == -1)
+	perror("close");
+
+#include <string.h>
+char *strerror (int errnum);
+
+#include <string.h>
+strerror_r (int errnum, char *buf, size_t len);
+```
+- the 2nd func returns pointer to str describing the error.
+	- can change by `perror(), strerror()`
+	- thus not thread-safe
+- the `strerror_r()` func is thread-safe.
+	- fills the buffer of `len` pointed at by `buf`
+	- humorously set `errno` when error.
+- common mistake is any library or syscall will override it
+```c
+if (fsync (fd) == −1){
+	const int err = errno;// this is needed
+	fprintf (stderr, "fsync failed: %s\n", strerror (errno));
+	if (err == EIO){
+		/* if the error is I/O-related, jump ship */
+		fprintf (stderr, "I/O error on %d!\n", fd);
+		exit (EXIT_FAILURE);
+	}
+}
+```
+- in single-threaded prog, `errno` is a global variable.
+- in multithreaded prog, `errno` is stored per-thread,
+	- and thus thread-safe.
+## Getting Started with System Programming
+
+
+
