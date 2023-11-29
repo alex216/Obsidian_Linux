@@ -4,11 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "c8bb900bdc5163e9",
+        "id": "779dd379d237b8b5",
         "type": "tabs",
         "children": [
           {
-            "id": "f637fd1dea7979b1",
+            "id": "77e117bdf7d03bc6",
             "type": "leaf",
             "state": {
               "type": "empty",
@@ -149,7 +149,7 @@
       "table-editor-obsidian:Advanced Tables Toolbar": false
     }
   },
-  "active": "f637fd1dea7979b1",
+  "active": "77e117bdf7d03bc6",
   "lastOpenFiles": [
     "picture/Linux Sys Prog 1 index.png",
     "Linux Sys Prog Chapter 1 Intro.md",
